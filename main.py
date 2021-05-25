@@ -2,7 +2,7 @@ import pathlib
 import datetime
 from paramiko import SSHClient
 from scp import SCPClient
-
+import getpass
 
 def start():
     mtime = datetime.datetime.fromtimestamp(fname.stat().st_mtime)
@@ -28,8 +28,8 @@ if __name__ == '__main__':
 
     while True:
         hostname = input("Host name:\n")
-        username = input("Username:\n")
-        password = input("Password:\n")
+        username = getpass.getpass("Username:\n")
+        password = getpass.getpass("Password:\n")
         try:
             print("Attempting to connect to SSH client...")
             ssh = SSHClient()
