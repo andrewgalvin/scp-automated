@@ -2,7 +2,8 @@ import paramiko
 import getpass
 import os
 import time
-
+import datetime
+import pathlib
 
 # Thank you stack overflow for this one
 # https://stackoverflow.com/questions/4409502/directory-transfers-with-paramiko
@@ -31,22 +32,30 @@ class MySFTPClient(paramiko.SFTPClient):
 
 
 def start():
-    mtime = time.ctime(max(os.stat(root).st_mtime for root, _, _ in os.walk(folderpath)))
+    mtime = None
+    for path, subdirs, files in os.walk(folderpath):
+        for name in files:
+            if mtime is None:
+                mtime = datetime.datetime.fromtimestamp(pathlib.Path(os.path.join(path,name)).stat().st_mtime)
+            elif mtime < datetime.datetime.fromtimestamp(pathlib.Path(os.path.join(path,name)).stat().st_mtime):
+                mtime = datetime.datetime.fromtimestamp(pathlib.Path(os.path.join(path,name)).stat().st_mtime)
     while True:
-        if mtime != time.ctime(max(os.stat(root).st_mtime for root, _, _ in os.walk(folderpath))):
-            mtime = time.ctime(max(os.stat(root).st_mtime for root, _, _ in os.walk(folderpath)))
-            print(f'    File updated at: {mtime}...')
-            print(f'    Updating directory on server...')
-            try:
-                transport = paramiko.Transport((hostname, 22))
-                transport.connect(username=username, password=password)
-                sftp = MySFTPClient.from_transport(transport)
-                sftp.mkdir(target_path, ignore_existing=True)
-                sftp.put_dir(folderpath, target_path)
-                sftp.close()
-                print(f'    Successfully updated the contents on the server')
-            except:
-                print("An error occurred updating the content on the server.")
+        for path, subdirs, files in os.walk(folderpath):
+            for name in files:
+                if mtime < datetime.datetime.fromtimestamp(pathlib.Path(os.path.join(path,name)).stat().st_mtime):
+                    mtime = datetime.datetime.fromtimestamp(pathlib.Path(os.path.join(path,name)).stat().st_mtime)
+                    print(f'    File updated at: {mtime}...')
+                    print(f'    Updating directory on server...')
+                    try:
+                        transport = paramiko.Transport((hostname, 22))
+                        transport.connect(username=username, password=password)
+                        sftp = MySFTPClient.from_transport(transport)
+                        sftp.mkdir(target_path, ignore_existing=True)
+                        sftp.put_dir(folderpath, target_path)
+                        sftp.close()
+                        print(f'    Successfully updated the contents on the server')
+                    except:
+                        print("An error occurred updating the content on the server.")
 
 
 if __name__ == '__main__':
@@ -68,4 +77,5 @@ if __name__ == '__main__':
             print("Starting the monitor...")
             start()
         except Exception as e:
+            print(e)
             print("An error occurred connecting to SSH. Try again.")
